@@ -2,7 +2,8 @@
 
 > 📜 **Academic Research Paper Available**  
 > We have published a comprehensive mathematical research paper analyzing why XGBoost dominates tabular churn prediction.  
-> 📖 **Read the full research paper here:** [**`research_paper/research_paper.md`**](./research_paper/research_paper.md)
+> 📖 **Read the full research paper here:** [**`Churn_Prediction Repository`**](https://github.com/prabhu-omkar/Churn_Prediction)
+
 
 ---
 

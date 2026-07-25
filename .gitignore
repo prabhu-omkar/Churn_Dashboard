@@ -35,6 +35,10 @@ ENV/
 .DS_Store
 Thumbs.db
 
-# User dynamic uploads
+# User dynamic uploads & generated artifacts
 static/uploads/*
 !static/uploads/.gitkeep
+research_paper/
+plots/
+web_plots/
+
