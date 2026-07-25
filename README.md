@@ -21,11 +21,8 @@ In the highly competitive online gaming industry, acquiring a new player costs *
 
 This repository presents an **end-to-end Machine Learning Operating System & Interactive Web Dashboard** deployed on cloud infrastructure. Built on **40,034 player telemetry records**, the application provides real-time automated model training, player persona clustering, SHAP feature explainability, and live single-player risk inference.
 
-> 📖 **Academic Research Paper Available**:  
-> For full mathematical derivations, statistical testing, and proofs on why XGBoost dominates tabular churn prediction, read our research paper repository:  
-> 👉 [**`prabhu-omkar/Churn_Prediction`**](https://github.com/prabhu-omkar/Churn_Prediction)
-
 ---
+
 
 ## 🚀 Key Features
 
@@ -200,23 +197,8 @@ Churn_Dashboard/
 
 ---
 
-## 📖 Citation & Research Paper
-
-If you use this project, dashboard, or dataset in your research or commercial applications, please cite:
-
-```bibtex
-@article{churn_xgboost_2026,
-  title={Why XGBoost Dominates Tabular Churn Prediction: A Mathematical and Empirical Analysis},
-  author={Omkar, Prabhu and Churn Prediction OS Team},
-  journal={Online Gaming Analytics Repository},
-  year={2026},
-  url={https://github.com/prabhu-omkar/Churn_Prediction}
-}
-```
-
----
-
 <div align="center">
+
 
 Made with ❤️ for Game Analytics & Machine Learning Engineering  
 **Deployed App**: [https://churn-dashboard-nkxv.onrender.com/](https://churn-dashboard-nkxv.onrender.com/)
