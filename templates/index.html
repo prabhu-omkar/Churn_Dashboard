@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CHURN // RETRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Pixelify+Sans:wght@400;700&family=VT323&display=swap"
+        rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>👾 CHURN.EXE 👾</h1>
+    </header>
+
+    <div class="layout">
+
+        <!-- SIDE COLUMN: CONTROLS -->
+        <div class="side-col">
+            <div class="retro-window">
+                <div class="window-header">
+                    <div class="window-title">1_UPLINK</div>
+                    <div class="window-controls">
+                        <div class="w-dot"></div>
+                        <div class="w-dot"></div>
+                        <div class="w-dot"></div>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="step-section active" id="sec-upload">
+                        <div class="upload-zone" id="drop-zone">
+                            <div class="upload-icon">💾</div>
+                            <div class="upload-text">INSERT DATA CARTRIDGE</div>
+                            <div style="font-size: 1rem; margin-top: 5px;">(Click or drop CSV)</div>
+                        </div>
+                        <input type="file" id="file-input" accept=".csv" hidden>
+                        <div id="upload-status" style="font-weight: bold; text-align: center; display: none;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="retro-window">
+                <div class="window-header">
+                    <div class="window-title">2_CONFIG</div>
+                    <div class="window-controls">
+                        <div class="w-dot"></div>
+                        <div class="w-dot"></div>
+                    </div>
+                </div>
+                <div class="window-body">
+                    <div class="step-section" id="sec-config">
+                        <div class="input-group">
+                            <label>TARGET MISSION (COL):</label>
+                            <select id="target-col" class="retro-select"></select>
+                        </div>
+                        <div class="input-group" id="positive-val-group" style="display:none">
+                            <label>CRITICAL VALUE (CHURN):</label>
+                            <select id="positive-val" class="retro-select"></select>
+                        </div>
+                        <button class="retro-btn" id="btn-analyze">▶ START SYSTEM</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="retro-window">
+                <div class="window-header">
+                    <div class="window-title">DATA_STATS</div>
+                </div>
+                <div class="window-body" style="padding: 10px;">
+                    <div class="stats-box" id="dataset-stats">
+                        Awaiting Uplink...
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN COLUMN: DISPLAY -->
+        <div class="main-col">
+            <div class="retro-window" style="flex: 1;">
+                <div class="window-header">
+                    <div class="window-title">MAIN_DISPLAY</div>
+                    <div class="window-controls">
+                        <div class="w-dot"></div>
+                    </div>
+                </div>
+                <div class="window-body" style="padding: 15px; background: #e3d4f4;">
+                    <div class="gameboy-screen">
+
+                        <!-- IDLE STATE -->
+                        <div class="screen-state active" id="state-idle">
+                            <div class="idle-text blink">PRESS START</div>
+                            <div style="font-size: 1.5rem;">System Ready. Insert Cartridge.</div>
+                        </div>
+
+                        <!-- LOADING STATE -->
+                        <div class="screen-state" id="state-loading">
+                            <div class="loading-title">⚙ PROCESSING ⚙</div>
+                            <div class="progress-container">
+                                <div class="progress-bar" id="prog-bar"></div>
+                            </div>
+                            <div class="progress-status blink" id="prog-text">UPLOADING TO MAINFRAME...</div>
+                        </div>
+
+                        <!-- RESULTS STATE -->
+                        <div class="screen-state results-state" id="state-results">
+                            <div class="results-header">
+                                <div class="r-stat">
+                                    <div class="r-stat-label">ACCURACY</div>
+                                    <div class="r-stat-val" id="res-acc">0%</div>
+                                </div>
+                                <div class="r-stat">
+                                    <div class="r-stat-label">F1 SCORE</div>
+                                    <div class="r-stat-val" id="res-f1">0%</div>
+                                </div>
+                                <div class="r-stat">
+                                    <div class="r-stat-label">CHURN RATE</div>
+                                    <div class="r-stat-val" id="res-churn">0%</div>
+                                </div>
+                            </div>
+
+                            <div class="plot-tabs">
+                                <button class="ptab active" data-tab="tab-clusters">CLUSTERS</button>
+                                <button class="ptab" data-tab="tab-eda">EDA</button>
+                                <button class="ptab" data-tab="tab-model">MODEL</button>
+                                <button class="ptab" data-tab="tab-shap">SHAP</button>
+                            </div>
+
+                            <div class="plot-container">
+                                <div class="plot-grid active" id="tab-clusters"></div>
+                                <div class="plot-grid" id="tab-eda"></div>
+                                <div class="plot-grid" id="tab-model"></div>
+                                <div class="plot-grid" id="tab-shap"></div>
+                            </div>
+                        </div>
+
+                        <div id="error-msg"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let sessionData = {};
+
+        // Tabs
+        document.querySelectorAll('.ptab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.ptab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                document.querySelectorAll('.plot-grid').forEach(g => g.classList.remove('active'));
+                document.getElementById(btn.dataset.tab).classList.add('active');
+            });
+        });
+
+        // Upload Handlers
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.background = '#ffc9cb'; });
+        dropZone.addEventListener('dragleave', () => dropZone.style.background = '');
+        dropZone.addEventListener('drop', e => {
+            e.preventDefault(); dropZone.style.background = '';
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', () => { if (fileInput.files.length) handleFile(fileInput.files[0]); });
+
+        function showError(msg) {
+            const el = document.getElementById('error-msg');
+            el.innerText = msg;
+            el.style.display = 'block';
+            setTimeout(() => el.style.display = 'none', 5000);
+        }
+
+        async function handleFile(file) {
+            const status = document.getElementById('upload-status');
+            status.style.display = 'block';
+            status.innerText = 'READING DISK...';
+
+            const fd = new FormData();
+            fd.append('file', file);
+            try {
+                const res = await fetch('/upload', { method: 'POST', body: fd });
+                const data = await res.json();
+                if (data.error) { showError('UPLINK FAILED: ' + data.error); status.innerText = 'ERROR'; return; }
+
+                sessionData = data;
+                status.innerText = 'DATA LOADED!';
+
+                document.getElementById('sec-config').classList.add('active');
+                setupConfig(data);
+
+                document.getElementById('state-idle').classList.remove('active');
+                document.getElementById('state-idle').innerHTML = '<div class="idle-text blink">CONFIGURE MISSION</div><div style="font-size: 1.5rem;">Data Loaded. Select Target.</div>';
+                document.getElementById('state-idle').classList.add('active');
+
+            } catch (e) {
+                showError('SYSTEM ERROR: ' + e.message);
+                status.innerText = 'ERROR';
+            }
+        }
+
+        function setupConfig(data) {
+            const sel = document.getElementById('target-col');
+            sel.innerHTML = data.columns.map(c => `<option value="${c}">${c}</option>`).join('');
+
+            const hints = ['engagementlevel', 'churn', 'target', 'label', 'status', 'attrition', 'churned'];
+            let bestMatch = null;
+            for (const col of data.columns) {
+                if (hints.includes(col.toLowerCase())) { bestMatch = col; break; }
+            }
+            if (bestMatch) sel.value = bestMatch;
+
+            sel.addEventListener('change', () => updatePositiveVal(data));
+            updatePositiveVal(data);
+
+            document.getElementById('dataset-stats').innerHTML = `
+        <div>ROWS: <span class="hl">${data.rows.toLocaleString()}</span></div>
+        <div>COLS: <span class="hl">${data.columns.length}</span></div>
+    `;
+        }
+
+        function updatePositiveVal(data) {
+            const col = document.getElementById('target-col').value;
+            const grp = document.getElementById('positive-val-group');
+            const sel = document.getElementById('positive-val');
+            if (data.uniques && data.uniques[col]) {
+                grp.style.display = 'block';
+                sel.innerHTML = data.uniques[col].map(v => `<option value="${v}">${v}</option>`).join('');
+            } else {
+                grp.style.display = 'none';
+            }
+        }
+
+        // Analyze Handlers
+        let progressInterval;
+        let simulatedProgress = 0;
+
+        document.getElementById('btn-analyze').addEventListener('click', async () => {
+            document.querySelectorAll('.screen-state').forEach(s => s.classList.remove('active'));
+            document.getElementById('state-loading').classList.add('active');
+
+            // Disable controls
+            document.getElementById('sec-upload').classList.remove('active');
+            document.getElementById('sec-config').classList.remove('active');
+
+            startSimulatedProgress();
+
+            const body = {
+                session_id: sessionData.session_id,
+                target_col: document.getElementById('target-col').value,
+            };
+            const pvg = document.getElementById('positive-val-group');
+            if (pvg.style.display !== 'none') {
+                body.positive_val = document.getElementById('positive-val').value;
+            }
+
+            try {
+                const res = await fetch('/analyze', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(body)
+                });
+                const data = await res.json();
+
+                finishSimulatedProgress();
+
+                if (data.error) {
+                    showError('CRITICAL FAILURE: ' + data.error);
+                    resetUI();
+                    return;
+                }
+
+                setTimeout(() => {
+                    document.querySelectorAll('.screen-state').forEach(s => s.classList.remove('active'));
+                    document.getElementById('state-results').classList.add('active');
+                    renderResults(data);
+
+                    // Re-enable controls for another run
+                    document.getElementById('sec-upload').classList.add('active');
+                    document.getElementById('sec-config').classList.add('active');
+                }, 500);
+
+            } catch (e) {
+                finishSimulatedProgress();
+                showError('COMMUNICATION SEVERED: ' + e.message);
+                resetUI();
+            }
+        });
+
+        function resetUI() {
+            document.querySelectorAll('.screen-state').forEach(s => s.classList.remove('active'));
+            document.getElementById('state-idle').classList.add('active');
+            document.getElementById('sec-upload').classList.add('active');
+            document.getElementById('sec-config').classList.add('active');
+        }
+
+        function startSimulatedProgress() {
+            const bar = document.getElementById('prog-bar');
+            const text = document.getElementById('prog-text');
+            simulatedProgress = 0;
+            bar.style.width = '0%';
+
+            const phases = [
+                { limit: 15, msg: "PREPROCESSING DATA..." },
+                { limit: 30, msg: "CLUSTERING SEGMENTS..." },
+                { limit: 50, msg: "BALANCING (SMOTE)..." },
+                { limit: 85, msg: "TUNING XGBOOST... (THIS TAKES TIME)" },
+                { limit: 95, msg: "COMPUTING SHAP VALUES..." }
+            ];
+
+            let phaseIndex = 0;
+
+            progressInterval = setInterval(() => {
+                // Asymptotically approach the current phase limit
+                let target = phases[phaseIndex].limit;
+
+                // If we are close to the target limit and not at the last phase, move to next phase occasionally
+                // Wait, realistically we just want to slow down as we approach 95% total
+                simulatedProgress += (95 - simulatedProgress) * 0.02; // Slows down immensely as it nears 95
+
+                bar.style.width = simulatedProgress + '%';
+
+                // Update text based on current simulated progress percentage
+                for (let i = phases.length - 1; i >= 0; i--) {
+                    if (simulatedProgress >= (i === 0 ? 0 : phases[i - 1].limit)) {
+                        text.innerText = phases[i].msg;
+                        break;
+                    }
+                }
+            }, 200);
+        }
+
+        function finishSimulatedProgress() {
+            clearInterval(progressInterval);
+            document.getElementById('prog-bar').style.width = '100%';
+            document.getElementById('prog-text').innerText = "SYSTEM COMPLETE!";
+        }
+
+        function renderResults(data) {
+            const m = data.metrics;
+
+            document.getElementById('res-acc').innerText = (m.accuracy * 100).toFixed(1) + '%';
+            document.getElementById('res-f1').innerText = (m.f1 * 100).toFixed(1) + '%';
+            document.getElementById('res-churn').innerText = (data.info.churn_rate * 100).toFixed(1) + '%';
+
+            const base = `/web_plots/`;
+
+            window.currentSessionId = data.session_id;
+
+            // Build Simulator
+            const simControls = document.getElementById('sim-controls');
+            if (simControls && data.info.simulator) {
+                simControls.innerHTML = '';
+                window.currentPlayerState = {};
+
+                for (const [col, stats] of Object.entries(data.info.simulator.numeric)) {
+                    window.currentPlayerState[col] = stats.mean;
+                    simControls.innerHTML += `
+                <div class="sim-control" style="margin-bottom: 15px; text-align: left;">
+                    <label style="display: flex; justify-content: space-between; font-weight: bold; color: var(--text-color); margin-bottom: 5px;">
+                        <span>${col}</span>
+                        <span id="val-${col}" style="color: var(--neon-cyan);">${stats.mean.toFixed(2)}</span>
+                    </label>
+                    <input type="range" min="${stats.min}" max="${stats.max}" step="${(stats.max - stats.min) / 100 || 1}" value="${stats.mean}" 
+                           oninput="document.getElementById('val-${col}').innerText=parseFloat(this.value).toFixed(2); updateSimulation('${col}', this.value)"
+                           style="width: 100%; cursor: pointer;">
+                </div>
+            `;
+                }
+                for (const [col, opts] of Object.entries(data.info.simulator.categorical)) {
+                    window.currentPlayerState[col] = opts[0];
+                    let optionsHtml = opts.map(o => `<option value="${o}">${o}</option>`).join('');
+                    simControls.innerHTML += `
+                <div class="sim-control" style="margin-bottom: 15px; text-align: left;">
+                    <label style="display: block; font-weight: bold; color: var(--text-color); margin-bottom: 5px;">${col}</label>
+                    <select onchange="updateSimulation('${col}', this.value)" style="width: 100%; padding: 8px; background: var(--bg-color); color: var(--text-color); border: 2px solid var(--grid-color); font-family: inherit;">
+                        ${optionsHtml}
+                    </select>
+                </div>
+            `;
+                }
+                runSimulation();
+            }
+
+            const tabMap = {
+                'tab-clusters': ['01_persona_radar.png', '04_persona_churn_rate.png'],
+                'tab-eda': ['02_correlation_heatmap.png', '03_feature_distributions.png'],
+                'tab-model': ['07_roc_curves.png', '08_precision_recall.png', '09_confusion_matrices.png', '10_feature_importance.png'],
+                'tab-shap': ['11_shap_summary.png', '12_shap_bar.png']
+            };
+
+            for (const [id, files] of Object.entries(tabMap)) {
+                const el = document.getElementById(id);
+                let html = '';
+                files.forEach(f => {
+                    html += `<img src="${base}${f}" class="plot-img" alt="${f}" loading="lazy">`;
+                });
+                el.innerHTML = html;
+            }
+        }
+        window.updateSimulation = function (col, val) {
+            if (!isNaN(val)) val = parseFloat(val);
+            window.currentPlayerState[col] = val;
+            runSimulation();
+        };
+
+        window.runSimulation = async function () {
+            try {
+                const res = await fetch('/simulate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        session_id: window.currentSessionId,
+                        player: window.currentPlayerState
+                    })
+                });
+                const data = await res.json();
+                if (data.churn_probability !== undefined) {
+                    const prob = (data.churn_probability * 100).toFixed(1);
+                    document.getElementById('churn-gauge-text').innerText = prob + '%';
+                    document.getElementById('churn-gauge-fill').style.width = prob + '%';
+
+                    const color = data.churn_probability > 0.5 ? 'var(--neon-pink)' : 'var(--neon-cyan)';
+                    document.getElementById('churn-gauge-fill').style.background = color;
+                    document.getElementById('churn-gauge-text').style.color = color;
+                    document.getElementById('churn-gauge-text').style.textShadow = `0 0 10px ${color}`;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        };
+
+    </script>
+</body>
+
+</html>
