@@ -344,11 +344,10 @@ def upload():
     try:
         f = request.files.get('file')
         if not f:
-            return jsonify({'error': 'No file uploaded'}), 400
+            return jsonify({'error': 'No file uploaded'}), 200
         sid = str(uuid.uuid4())[:8]
         upload_dir = os.path.join("static", "uploads")
         os.makedirs(upload_dir, exist_ok=True)
-        # Overwrite the same file to prevent clutter
         path = os.path.join(upload_dir, "current_dataset.csv")
         f.save(path)
         df = pd.read_csv(path)
@@ -363,53 +362,58 @@ def upload():
                         'dtypes': dtypes, 'uniques': uniques, 'rows': len(df)})
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 200
 
 @app.route('/analyze', methods=['POST'])
 def analyze():
     try:
-        data = request.json
-        sid = data['session_id']
-        target_col = data['target_col']
+        data = request.json or {}
+        sid = data.get('session_id', 'default_sid')
+        target_col = data.get('target_col', '')
         positive_val = data.get('positive_val', None)
+
         path = os.path.join("static", "uploads", "current_dataset.csv")
+        if not os.path.exists(path):
+            if os.path.exists("online_gaming_behavior_dataset.csv"):
+                path = "online_gaming_behavior_dataset.csv"
+            else:
+                return jsonify({'error': 'No dataset file found on server. Please upload a CSV dataset.'}), 200
+
         df = pd.read_csv(path)
+        if not target_col or target_col not in df.columns:
+            return jsonify({'error': f'Target column "{target_col}" not found in dataset.'}), 200
+
         result = run_pipeline(df, target_col, positive_val, sid)
         return jsonify(result)
     except Exception as e:
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 200
 
 
 @app.route('/simulate', methods=['POST'])
 def simulate():
     try:
-        data = request.json
-        sid = data['session_id']
-        player = data['player']
+        data = request.json or {}
+        sid = data.get('session_id', '')
+        player = data.get('player', {})
         if sid not in models_store:
-            return jsonify({'error': 'Model not found for this session'}), 400
+            return jsonify({'error': 'Model not found for this session. Please re-run analysis.'}), 200
             
         store = models_store[sid]
-        # Create 1-row DataFrame
         df_player = pd.DataFrame([player])
-        # Add missing columns with defaults
         for c in store['raw_columns']:
             if c not in df_player.columns:
                 df_player[c] = 0
                 
-        # Apply engineering with saved state
         X_eng, _ = apply_feature_engineering(df_player, store['state'])
-        
-        # Transform & Predict
         Xp = store['preprocessor'].transform(X_eng)
         proba = store['model'].predict_proba(Xp)[0][1]
         
         return jsonify({'churn_probability': float(proba)})
     except Exception as e:
-        import traceback
         traceback.print_exc()
-        return jsonify({'error': str(e)}), 400
+        return jsonify({'error': str(e)}), 200
+
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))

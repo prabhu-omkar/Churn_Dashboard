@@ -265,15 +265,24 @@
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(body)
                 });
-                const data = await res.json();
-
-                finishSimulatedProgress();
-
-                if (data.error) {
-                    showError('CRITICAL FAILURE: ' + data.error);
+                let data;
+                try {
+                    data = await res.json();
+                } catch (parseErr) {
+                    finishSimulatedProgress();
+                    showError('SERVER RESPONSE ERROR: Server returned invalid format.');
                     resetUI();
                     return;
                 }
+
+                finishSimulatedProgress();
+
+                if (!data || data.error) {
+                    showError('CRITICAL FAILURE: ' + (data ? data.error : 'Unknown server error'));
+                    resetUI();
+                    return;
+                }
+
 
                 setTimeout(() => {
                     document.querySelectorAll('.screen-state').forEach(s => s.classList.remove('active'));
