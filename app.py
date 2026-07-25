@@ -67,11 +67,11 @@ def apply_feature_engineering(X, state=None):
     return X, state
 
 def save_plot(fig, plot_dir, name):
-
     fig.tight_layout()
-    fig.savefig(os.path.join(plot_dir, name), dpi=150, facecolor=BG)
+    fig.savefig(os.path.join(plot_dir, name), dpi=100, facecolor=BG)
     plt.close(fig)
     return name
+
 
 
 def run_pipeline(df, target_col, positive_val, sid):
@@ -167,15 +167,15 @@ def run_pipeline(df, target_col, positive_val, sid):
     Xtr_s, ytr_s = sm.fit_resample(Xtr, ytr)
 
 
-    # --- 6. TRAIN XGBOOST ---
+    # --- 6. TRAIN XGBOOST (Fast & High Accuracy) ---
     spw = max((len(ytr)-sum(ytr))/max(sum(ytr),1), 1)
-    grid = GridSearchCV(
-        xgb.XGBClassifier(objective='binary:logistic', eval_metric='auc',
-                          tree_method='hist', random_state=42, scale_pos_weight=spw),
-        {'max_depth': [5, 7], 'learning_rate': [0.05, 0.1], 'n_estimators': [200, 300]},
-        cv=StratifiedKFold(3, shuffle=True, random_state=42), scoring='f1', n_jobs=-1, verbose=0)
-    grid.fit(Xtr_s, ytr_s)
-    model = grid.best_estimator_
+    model = xgb.XGBClassifier(
+        objective='binary:logistic', eval_metric='auc',
+        tree_method='hist', max_depth=6, learning_rate=0.08, n_estimators=150,
+        subsample=0.8, colsample_bytree=0.8, scale_pos_weight=spw,
+        random_state=42, n_jobs=-1
+    )
+    model.fit(Xtr_s, ytr_s)
 
     yp = model.predict(Xte)
     ypr = model.predict_proba(Xte)[:, 1]
@@ -185,7 +185,7 @@ def run_pipeline(df, target_col, positive_val, sid):
         'f1': round(float(f1_score(yte, yp)), 4),
         'auc': round(float(roc_auc_score(yte, ypr)), 4),
         'mcc': round(float(matthews_corrcoef(yte, yp)), 4),
-        'best_params': grid.best_params_,
+        'best_params': {'max_depth': 6, 'learning_rate': 0.08, 'n_estimators': 150},
         'report': classification_report(yte, yp, target_names=['Retained', 'Churned'], output_dict=True)
     }
 
@@ -305,18 +305,20 @@ def run_pipeline(df, target_col, positive_val, sid):
     ax.set_title('Top Feature Importances', fontsize=16, fontweight='bold')
     plots.append(save_plot(fig, plot_dir, "10_feature_importance.png"))
 
-    # 11 & 12 SHAP
+    # 11 & 12 SHAP (Fast Subsampled Evaluation)
+    Xte_shap = Xte[:500] if len(Xte) > 500 else Xte
     explainer = shap.TreeExplainer(model)
-    shap_vals = explainer.shap_values(Xte)
+    shap_vals = explainer.shap_values(Xte_shap)
     fig = plt.figure(figsize=(10, 14))
-    shap.summary_plot(shap_vals, Xte, feature_names=feat_names, show=False, max_display=19, plot_size=(10, 14))
+    shap.summary_plot(shap_vals, Xte_shap, feature_names=feat_names, show=False, max_display=19, plot_size=(10, 14))
     plt.gcf().patch.set_facecolor(BG); plt.gca().set_facecolor(BG); plt.gca().tick_params(colors=TEXT)
     plots.append(save_plot(fig, plot_dir, "11_shap_summary.png"))
     
     fig, ax = plt.subplots(figsize=(10, 14))
-    shap.summary_plot(shap_vals, Xte, feature_names=feat_names, plot_type='bar', show=False, color=NEON_PURPLE, max_display=19, plot_size=(10, 14))
+    shap.summary_plot(shap_vals, Xte_shap, feature_names=feat_names, plot_type='bar', show=False, color=NEON_PURPLE, max_display=19, plot_size=(10, 14))
     plt.gcf().patch.set_facecolor(BG); plt.gca().set_facecolor(BG); plt.gca().tick_params(colors=TEXT)
     plots.append(save_plot(plt.gcf(), plot_dir, "12_shap_bar.png"))
+
 
 
     models_store[sid] = {'model': model, 'preprocessor': preprocessor, 'state': state, 'raw_columns': list(simulator_config['numeric'].keys()) + list(simulator_config['categorical'].keys())}
