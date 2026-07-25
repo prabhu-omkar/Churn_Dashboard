@@ -245,25 +245,29 @@ def run_pipeline(df, target_col, positive_val, sid):
         ax.set_title("Feature Correlation Heatmap", fontsize=16, fontweight='bold')
         plots.append(save_plot(fig, plot_dir, "02_correlation_heatmap.png"))
         
-        # 03 Feature Distributions
+        # 03 Feature Distributions (Generic for any dataset)
         dist_features = ['PlayTimeHours', 'SessionsPerWeek', 'AvgSessionDurationMinutes',
                          'TotalWeeklyMinutes', 'PlayerLevel', 'AchievementsUnlocked']
         dist_features = [f for f in dist_features if f in X.columns]
-        
-        fig, axes = plt.subplots(2, 3, figsize=(18, 10))
-        for i, col in enumerate(dist_features):
-            ax = axes.flatten()[i]
-            sns.histplot(x=X[col], hue=y, bins=30, ax=ax, 
-                         palette=[NEON_CYAN, NEON_PINK], edgecolor=BG, alpha=0.7)
-            ax.set_title(col, fontsize=12, fontweight='bold')
-            ax.set_xlabel('')
-            
-        for j in range(len(dist_features), len(axes.flatten())):
-            axes.flatten()[j].set_visible(False)
-            
-        fig.suptitle("Key Feature Distributions by Churn Status", fontsize=18, fontweight='bold', y=1.02)
-        plt.tight_layout()
-        plots.append(save_plot(fig, plot_dir, "03_feature_distributions.png"))
+        if not dist_features and num_cols:
+            dist_features = num_cols[:6]
+
+        if dist_features:
+            fig, axes = plt.subplots(2, 3, figsize=(18, 10))
+            for i, col in enumerate(dist_features):
+                ax = axes.flatten()[i]
+                sns.histplot(x=X[col], hue=y, bins=30, ax=ax, 
+                             palette=[NEON_CYAN, NEON_PINK], edgecolor=BG, alpha=0.7)
+                ax.set_title(col, fontsize=12, fontweight='bold')
+                ax.set_xlabel('')
+                
+            for j in range(len(dist_features), len(axes.flatten())):
+                axes.flatten()[j].set_visible(False)
+                
+            fig.suptitle("Key Feature Distributions by Target Class", fontsize=18, fontweight='bold', y=1.02)
+            plt.tight_layout()
+            plots.append(save_plot(fig, plot_dir, "03_feature_distributions.png"))
+
 
 
 
