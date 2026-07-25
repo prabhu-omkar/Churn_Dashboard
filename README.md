@@ -143,22 +143,15 @@ python app.py
 ## 📂 Repository Structure
 
 ```
-Churn_Prediction/
-├── README.md                           # Main project documentation (You are here)
+Churn_Dashboard/
+├── README.md                           # Main project documentation
 ├── app.py                              # Flask Web Application & Model Arena OS
-├── churn_analysis.py                   # Complete standalone ML execution script
-├── model_results.json                  # Exported metrics & statistical test outputs
-├── online_gaming_behavior_dataset.csv  # Primary dataset (40,034 player records)
-├── plots/                              # Saved visual plots & SHAP diagrams
-├── static/                             # Web CSS styles & uploads
-├── templates/                          # HTML dashboard interface (index.html)
-└── research_paper/                     # Academic Research Paper Folder
-    ├── research_paper.md               # 📖 Full Mathematical Research Paper Manuscript
-    ├── README.md                       # Research paper folder guide
-    ├── churn_analysis.py               # ML script copy for paper replication
-    ├── model_results.json              # Results JSON
-    ├── online_gaming_behavior_dataset.csv
-    └── plots/                          # Paper figures
+├── requirements.txt                    # Python package dependencies
+├── Procfile                            # Production WSGI server start command
+├── render.yaml                         # Render 1-click deployment blueprint
+├── online_gaming_behavior_dataset.csv  # Sample dataset (40,034 player records)
+├── static/                             # Web CSS styles & dynamic uploads
+└── templates/                          # HTML dashboard interface (index.html)
 ```
 
 ---
@@ -173,8 +166,9 @@ If you use this repository or research paper in your work, please cite:
   author={Churn Prediction OS Team},
   journal={Online Gaming Analytics Repository},
   year={2026},
-  url={https://github.com/prabhu-omkar/Churn_Prediction/blob/main/research_paper/research_paper.md}
+  url={https://github.com/prabhu-omkar/Churn_Prediction}
 }
 ```
 
-*Read the full mathematical derivations and formal proofs in [research_paper/research_paper.md](./research_paper/research_paper.md).*
+*Read the full mathematical derivations and formal proofs in the [Churn_Prediction Repository](https://github.com/prabhu-omkar/Churn_Prediction).*
+
